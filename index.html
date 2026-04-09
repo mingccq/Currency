@@ -206,6 +206,18 @@
     .select-wrap .currency-select {
       padding-right: 22px;
     }
+
+    .rate-status {
+      font-size: 0.75rem;
+      color: #b36a00;
+      text-align: center;
+      margin-bottom: 12px;
+      min-height: 18px;
+    }
+
+    .rate-status.error {
+      color: #c0392b;
+    }
   </style>
 </head>
 <body>
@@ -262,7 +274,9 @@
 
   <div class="divider" style="margin-top:24px;"></div>
 
-  <button class="convert-btn" id="convertBtn">轉換</button>
+  <div class="rate-status" id="rateStatus">匯率載入中…</div>
+
+  <button class="convert-btn" id="convertBtn" disabled>轉換</button>
 
   <div class="result-box" id="resultBox">
     <div class="result-label">換算結果</div>
@@ -272,33 +286,44 @@
 </div>
 
 <script>
-  // Approximate exchange rates (base: USD)
-  // Update these as needed
-  const RATES = {
-    USD: 1,
-    EUR: 0.922,
-    JPY: 149.8,
-    TWD: 32.5
-  };
+  let RATES = {};
 
-  const SYMBOLS = {
-    USD: "$",
-    EUR: "€",
-    JPY: "¥",
-    TWD: "NT$"
-  };
+  const SYMBOLS = { USD: "$", EUR: "€", JPY: "¥", TWD: "NT$" };
+  const NAMES   = { USD: "美元", EUR: "歐元", JPY: "日圓", TWD: "新台幣" };
 
-  const NAMES = {
-    USD: "美元",
-    EUR: "歐元",
-    JPY: "日圓",
-    TWD: "新台幣"
-  };
+  const statusEl  = document.getElementById("rateStatus");
+  const convertBtn = document.getElementById("convertBtn");
+
+  async function fetchRates() {
+    try {
+      const res = await fetch("https://open.er-api.com/v6/latest/USD");
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      RATES = {
+        USD: 1,
+        EUR: data.rates.EUR,
+        JPY: data.rates.JPY,
+        TWD: data.rates.TWD
+      };
+      const updated = new Date(data.time_last_update_utc).toLocaleString("zh-TW", {
+        timeZone: "Asia/Taipei",
+        month: "numeric", day: "numeric",
+        hour: "2-digit", minute: "2-digit"
+      });
+      statusEl.textContent = `即時匯率・更新於 ${updated}`;
+      statusEl.classList.remove("error");
+      convertBtn.disabled = false;
+    } catch (e) {
+      statusEl.textContent = "匯率載入失敗，使用參考值";
+      statusEl.classList.add("error");
+      RATES = { USD: 1, EUR: 0.922, JPY: 149.8, TWD: 32.5 };
+      convertBtn.disabled = false;
+    }
+  }
 
   function convert(amount, from, to) {
     if (from === to) return amount;
-    const inUSD = amount / RATES[from];
-    return inUSD * RATES[to];
+    return (amount / RATES[from]) * RATES[to];
   }
 
   function formatAmount(value, currency) {
@@ -311,13 +336,13 @@
     });
   }
 
-  document.getElementById("convertBtn").addEventListener("click", () => {
+  convertBtn.addEventListener("click", () => {
     const rawAmount = parseFloat(document.getElementById("fromAmount").value);
     const from = document.getElementById("fromCurrency").value;
-    const to = document.getElementById("toCurrency").value;
-    const resultBox = document.getElementById("resultBox");
-    const resultValue = document.getElementById("resultValue");
-    const resultRate = document.getElementById("resultRate");
+    const to   = document.getElementById("toCurrency").value;
+    const resultBox    = document.getElementById("resultBox");
+    const resultValue  = document.getElementById("resultValue");
+    const resultRate   = document.getElementById("resultRate");
     const toAmountInput = document.getElementById("toAmount");
 
     if (isNaN(rawAmount) || rawAmount < 0) {
@@ -328,42 +353,30 @@
     }
 
     const result = convert(rawAmount, from, to);
-    const rate = convert(1, from, to);
+    const rate   = convert(1, from, to);
 
     toAmountInput.value = formatAmount(result, to);
-
-    resultValue.textContent =
-      SYMBOLS[to] + " " + formatAmount(result, to);
-    resultRate.textContent =
-      `1 ${NAMES[from]} = ${SYMBOLS[to]} ${formatAmount(rate, to)} ${NAMES[to]}`;
-
+    resultValue.textContent = SYMBOLS[to] + " " + formatAmount(result, to);
+    resultRate.textContent  = `1 ${NAMES[from]} = ${SYMBOLS[to]} ${formatAmount(rate, to)} ${NAMES[to]}`;
     resultBox.classList.add("show");
   });
 
-  // Swap currencies
   document.getElementById("swapBtn").addEventListener("click", () => {
     const fromSel = document.getElementById("fromCurrency");
-    const toSel = document.getElementById("toCurrency");
+    const toSel   = document.getElementById("toCurrency");
     const fromAmt = document.getElementById("fromAmount");
-    const toAmt = document.getElementById("toAmount");
+    const toAmt   = document.getElementById("toAmount");
 
     [fromSel.value, toSel.value] = [toSel.value, fromSel.value];
-
-    // If there's a result in toAmount, move it to fromAmount
-    if (toAmt.value) {
-      fromAmt.value = toAmt.value;
-      toAmt.value = "";
-    }
-
+    if (toAmt.value) { fromAmt.value = toAmt.value; toAmt.value = ""; }
     document.getElementById("resultBox").classList.remove("show");
   });
 
-  // Allow Enter key to trigger convert
   document.getElementById("fromAmount").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      document.getElementById("convertBtn").click();
-    }
+    if (e.key === "Enter") convertBtn.click();
   });
+
+  fetchRates();
 </script>
 
 </body>
