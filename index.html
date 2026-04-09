@@ -54,15 +54,15 @@
     }
 
     .input-row {
-      display: flex;
+      display: grid;
+      grid-template-columns: 1fr 88px;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       margin-bottom: 6px;
     }
 
     .amount-input {
-      flex: 1;
-      min-width: 0;
+      width: 100%;
       border: 2px solid #fdd49a;
       border-radius: 10px;
       padding: 13px 12px;
@@ -83,7 +83,7 @@
     }
 
     .currency-select {
-      width: 86px;
+      width: 100%;
       border: 2px solid #fdd49a;
       border-radius: 10px;
       padding: 13px 6px 13px 8px;
