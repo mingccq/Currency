@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>匯率換算小工具</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
+      background: #fff8f2;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header {
+      width: 100%;
+      background: #f5a623;
+      padding: 18px 24px;
+      color: #fff;
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 420px;
+      margin: 32px 16px;
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 4px 24px rgba(245, 166, 35, 0.13);
+      padding: 32px 28px 36px;
+    }
+
+    .field-label {
+      font-size: 0.85rem;
+      color: #b36a00;
+      font-weight: 600;
+      margin-bottom: 8px;
+      letter-spacing: 0.05em;
+    }
+
+    .input-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .amount-input {
+      flex: 1;
+      border: 2px solid #fdd49a;
+      border-radius: 10px;
+      padding: 13px 16px;
+      font-size: 1.15rem;
+      color: #333;
+      outline: none;
+      transition: border-color 0.2s;
+      background: #fffaf4;
+    }
+
+    .amount-input:focus {
+      border-color: #f5a623;
+      background: #fff;
+    }
+
+    .amount-input::placeholder {
+      color: #ccc;
+    }
+
+    .currency-select {
+      min-width: 90px;
+      border: 2px solid #fdd49a;
+      border-radius: 10px;
+      padding: 13px 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #c47a00;
+      background: #fff7ed;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      appearance: none;
+      text-align: center;
+    }
+
+    .currency-select:focus {
+      border-color: #f5a623;
+    }
+
+    .swap-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 18px 0;
+    }
+
+    .swap-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: #f5a623;
+      border: none;
+      color: #fff;
+      font-size: 1.3rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 3px 12px rgba(245, 166, 35, 0.35);
+      transition: background 0.18s, transform 0.18s;
+      user-select: none;
+    }
+
+    .swap-btn:active {
+      background: #d4880a;
+      transform: scale(0.93);
+    }
+
+    .convert-btn {
+      width: 100%;
+      margin-top: 28px;
+      padding: 15px;
+      background: #f5a623;
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(245, 166, 35, 0.38);
+      transition: background 0.18s, transform 0.15s;
+    }
+
+    .convert-btn:active {
+      background: #d4880a;
+      transform: scale(0.98);
+    }
+
+    .result-box {
+      margin-top: 24px;
+      padding: 18px 20px;
+      background: linear-gradient(135deg, #fff3df 0%, #ffe8be 100%);
+      border-radius: 14px;
+      text-align: center;
+      display: none;
+    }
+
+    .result-box.show {
+      display: block;
+    }
+
+    .result-label {
+      font-size: 0.8rem;
+      color: #b36a00;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      margin-bottom: 6px;
+    }
+
+    .result-value {
+      font-size: 1.7rem;
+      font-weight: 800;
+      color: #c47a00;
+      letter-spacing: 0.02em;
+    }
+
+    .result-rate {
+      font-size: 0.78rem;
+      color: #d4880a;
+      margin-top: 6px;
+    }
+
+    .divider {
+      height: 1px;
+      background: #fde8c4;
+      margin: 4px 0 20px;
+      border-radius: 1px;
+    }
+
+    /* select arrow custom */
+    .select-wrap {
+      position: relative;
+    }
+
+    .select-wrap::after {
+      content: "▾";
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #f5a623;
+      font-size: 0.75rem;
+      pointer-events: none;
+    }
+
+    .select-wrap .currency-select {
+      padding-right: 22px;
+    }
+  </style>
+</head>
+<body>
+
+<header>匯率換算小工具</header>
+
+<div class="card">
+  <!-- FROM -->
+  <div class="field-label">從</div>
+  <div class="input-row">
+    <input
+      class="amount-input"
+      id="fromAmount"
+      type="number"
+      inputmode="decimal"
+      placeholder="輸入金額"
+      min="0"
+    />
+    <div class="select-wrap">
+      <select class="currency-select" id="fromCurrency">
+        <option value="EUR">歐元 €</option>
+        <option value="JPY">日圓 ¥</option>
+        <option value="USD">美元 $</option>
+        <option value="TWD">新台幣 NT$</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- SWAP -->
+  <div class="swap-wrapper">
+    <button class="swap-btn" id="swapBtn" title="互換">↓↑</button>
+  </div>
+
+  <!-- TO -->
+  <div class="field-label">到</div>
+  <div class="input-row">
+    <input
+      class="amount-input"
+      id="toAmount"
+      type="number"
+      inputmode="decimal"
+      placeholder="換算結果"
+      readonly
+    />
+    <div class="select-wrap">
+      <select class="currency-select" id="toCurrency">
+        <option value="EUR">歐元 €</option>
+        <option value="JPY">日圓 ¥</option>
+        <option value="USD">美元 $</option>
+        <option value="TWD" selected>新台幣 NT$</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="divider" style="margin-top:24px;"></div>
+
+  <button class="convert-btn" id="convertBtn">轉換</button>
+
+  <div class="result-box" id="resultBox">
+    <div class="result-label">換算結果</div>
+    <div class="result-value" id="resultValue">—</div>
+    <div class="result-rate" id="resultRate"></div>
+  </div>
+</div>
+
+<script>
+  // Approximate exchange rates (base: USD)
+  // Update these as needed
+  const RATES = {
+    USD: 1,
+    EUR: 0.922,
+    JPY: 149.8,
+    TWD: 32.5
+  };
+
+  const SYMBOLS = {
+    USD: "$",
+    EUR: "€",
+    JPY: "¥",
+    TWD: "NT$"
+  };
+
+  const NAMES = {
+    USD: "美元",
+    EUR: "歐元",
+    JPY: "日圓",
+    TWD: "新台幣"
+  };
+
+  function convert(amount, from, to) {
+    if (from === to) return amount;
+    const inUSD = amount / RATES[from];
+    return inUSD * RATES[to];
+  }
+
+  function formatAmount(value, currency) {
+    if (currency === "JPY") {
+      return Math.round(value).toLocaleString("zh-TW");
+    }
+    return value.toLocaleString("zh-TW", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+
+  document.getElementById("convertBtn").addEventListener("click", () => {
+    const rawAmount = parseFloat(document.getElementById("fromAmount").value);
+    const from = document.getElementById("fromCurrency").value;
+    const to = document.getElementById("toCurrency").value;
+    const resultBox = document.getElementById("resultBox");
+    const resultValue = document.getElementById("resultValue");
+    const resultRate = document.getElementById("resultRate");
+    const toAmountInput = document.getElementById("toAmount");
+
+    if (isNaN(rawAmount) || rawAmount < 0) {
+      toAmountInput.value = "";
+      resultBox.classList.remove("show");
+      alert("請輸入有效的金額");
+      return;
+    }
+
+    const result = convert(rawAmount, from, to);
+    const rate = convert(1, from, to);
+
+    toAmountInput.value = formatAmount(result, to);
+
+    resultValue.textContent =
+      SYMBOLS[to] + " " + formatAmount(result, to);
+    resultRate.textContent =
+      `1 ${NAMES[from]} = ${SYMBOLS[to]} ${formatAmount(rate, to)} ${NAMES[to]}`;
+
+    resultBox.classList.add("show");
+  });
+
+  // Swap currencies
+  document.getElementById("swapBtn").addEventListener("click", () => {
+    const fromSel = document.getElementById("fromCurrency");
+    const toSel = document.getElementById("toCurrency");
+    const fromAmt = document.getElementById("fromAmount");
+    const toAmt = document.getElementById("toAmount");
+
+    [fromSel.value, toSel.value] = [toSel.value, fromSel.value];
+
+    // If there's a result in toAmount, move it to fromAmount
+    if (toAmt.value) {
+      fromAmt.value = toAmt.value;
+      toAmt.value = "";
+    }
+
+    document.getElementById("resultBox").classList.remove("show");
+  });
+
+  // Allow Enter key to trigger convert
+  document.getElementById("fromAmount").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      document.getElementById("convertBtn").click();
+    }
+  });
+</script>
+
+</body>
+</html>
